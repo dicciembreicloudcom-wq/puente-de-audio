@@ -1,0 +1,13 @@
+PyAudioWPatch
+aiohttp
+numpy
+pycaw
+comtypes
+qrcode
+zeroconf
+av
+winrt-runtime
+winrt-Windows.Media.Control
+winrt-Windows.Foundation
+pystray
+pillow

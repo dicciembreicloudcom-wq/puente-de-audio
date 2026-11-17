@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Laptop">
+<meta name="theme-color" content="#0f1115">
+<title>Audio de la laptop</title>
+<style>
+  :root { --bg:#f4f5f7; --card:#fff; --tx:#14161a; --sub:#5d6470; --acc:#2f6bff; --ok:#1a9b5a; --warn:#c77700; --bad:#d13b3b; --line:#e2e5ea; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b21; --tx:#eef0f3; --sub:#9aa2ae; --acc:#5b8cff; --ok:#38c47c; --warn:#f0a73a; --bad:#ff6b6b; --line:#272b33; } }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--tx); font:16px/1.4 -apple-system, system-ui, sans-serif;
+         min-height:100vh; padding:max(24px, env(safe-area-inset-top)) 16px 32px; }
+  main { max-width:420px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+  h1 { font-size:22px; margin:8px 0 0; }
+  .sub { color:var(--sub); font-size:14px; margin:0; }
+  #boton { width:100%; aspect-ratio:1/1; max-width:260px; align-self:center; border-radius:50%; border:none;
+           background:var(--acc); color:#fff; font-size:22px; font-weight:600; margin:16px 0; cursor:pointer;
+           box-shadow:0 10px 30px color-mix(in srgb, var(--acc) 35%, transparent); transition:transform .1s, background .2s; }
+  #boton:active { transform:scale(.97); }
+  #boton.on { background:var(--ok); box-shadow:0 10px 30px color-mix(in srgb, var(--ok) 35%, transparent); }
+  #boton small { display:block; font-size:14px; font-weight:400; opacity:.9; margin-top:6px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
+  .fila { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:6px 0; }
+  .fila + .fila { border-top:1px solid var(--line); }
+  .estado { display:flex; align-items:center; gap:8px; font-weight:500; }
+  .punto { width:10px; height:10px; border-radius:50%; background:var(--sub); flex:none; }
+  .punto.ok { background:var(--ok); } .punto.warn { background:var(--warn); } .punto.bad { background:var(--bad); }
+  input[type=range] { width:55%; accent-color:var(--acc); }
+  label { font-size:15px; }
+  .val { color:var(--sub); font-size:13px; font-variant-numeric:tabular-nums; }
+  input[type=checkbox] { width:22px; height:22px; accent-color:var(--acc); }
+  .control .titulo { margin:0 0 10px; font-weight:600; }
+  .botones { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .botones button { flex:1; height:52px; border:1px solid var(--line); border-radius:12px; background:var(--bg);
+                    color:var(--tx); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .botones button:active { background:var(--line); transform:scale(.96); }
+  .botones button.grande { flex:1.4; height:60px; background:var(--acc); border-color:var(--acc); color:#fff; }
+  .botones svg { width:24px; height:24px; fill:currentColor; }
+  .botones.vol { margin-top:10px; } .botones.vol .val { flex:1; text-align:center; font-size:15px; }
+  .nota { margin:10px 0 0; font-size:12px; color:var(--sub); }
+  .aviso { border-color:var(--acc); }
+  .aviso .titulo { margin:0 0 4px; font-weight:600; }
+  .aviso .nota { margin:0 0 12px; font-size:14px; }
+  .enlace { display:block; text-align:center; background:var(--acc); color:#fff; text-decoration:none;
+            font-weight:600; padding:12px; border-radius:12px; }
+  details { font-size:14px; color:var(--sub); }
+  details summary { cursor:pointer; color:var(--tx); font-weight:500; }
+  details li { margin:4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1>Audio de la laptop</h1>
+    <p class="sub">Escucha en tus AirPods lo que suena en tu computadora.</p>
+  </div>
+
+  <div class="card aviso" id="aviso" hidden>
+    <p class="titulo">Configúralo una sola vez</p>
+    <p class="nota" id="avisoTx">Abre la dirección fija y agrégala a tu pantalla de inicio (Compartir → Agregar a inicio). Así funciona en casa y con tu hotspot, sin volver a escanear el QR.</p>
+    <a class="enlace" id="avisoLink" href="#">Abrir dirección fija</a>
+  </div>
+
+  <button id="boton">Escuchar<small>Toca para empezar</small></button>
+
+  <div class="card">
+    <div class="fila"><span class="estado"><span class="punto" id="punto"></span><span id="estado">Desconectado</span></span><span class="val" id="retraso"></span></div>
+  </div>
+
+  <div class="card control">
+    <p class="titulo">Control de la laptop</p>
+    <div class="botones">
+      <button data-accion="anterior" aria-label="Anterior"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+      <button data-accion="atrasar" aria-label="Regresar unos segundos"><svg viewBox="0 0 24 24"><path d="M11 6v12L2 12zM21 6v12l-9-6z"/></svg></button>
+      <button data-accion="playpause" class="grande" aria-label="Reproducir o pausar"><svg viewBox="0 0 24 24"><path d="M3 5v14l9-7zM14 5h3v14h-3zM19 5h3v14h-3z"/></svg></button>
+      <button data-accion="adelantar" aria-label="Adelantar unos segundos"><svg viewBox="0 0 24 24"><path d="M13 6v12l9-6zM3 6v12l9-6z"/></svg></button>
+      <button data-accion="siguiente" aria-label="Siguiente"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+    </div>
+    <div class="botones vol">
+      <button id="volMenos" aria-label="Bajar volumen"><svg viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3zM15 11h7v2h-7z"/></svg></button>
+      <span class="val" id="volTx">100%</span>
+      <button id="volMas" aria-label="Subir volumen"><svg viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3zM17 8h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg></button>
+    </div>
+    <p class="nota" id="ctrlTx">Funciona con Spotify, YouTube, Netflix, HBO Max, Disney+ y más. Adelanta o regresa 10 segundos.</p>
+  </div>
+
+  <div class="card">
+    <div class="fila"><label for="vol">Volumen</label><input id="vol" type="range" min="0" max="150" value="100"></div>
+    <div class="fila"><label for="auto">Retraso automático<br><span class="val">se ajusta solo según tu red</span></label><input id="auto" type="checkbox" checked></div>
+    <div class="fila"><label for="lat">Retraso <span class="val" id="latTx"></span><br><span class="val">menos = más rápido, más = más estable</span></label>
+      <input id="lat" type="range" min="30" max="400" step="10" value="90"></div>
+    <div class="fila"><label for="fondo">Seguir sonando si salgo de Safari</label><input id="fondo" type="checkbox" checked></div>
+    <div class="fila"><label for="mute">Silenciar bocinas de la laptop</label><input id="mute" type="checkbox" checked></div>
+  </div>
+
+  <details>
+    <summary>¿No se escucha?</summary>
+    <ul>
+      <li>Asegúrate de que el iPhone y la laptop están en el mismo Wi-Fi.</li>
+      <li>Prueba quitar la opción “Seguir sonando si salgo de Safari”.</li>
+      <li>Si se corta seguido con el hotspot: en el iPhone ve a Compartir Internet y desactiva “Maximizar compatibilidad”.</li>
+      <li>Si abriste otra app con sonido, regresa aquí y toca el botón para reanudar.</li>
+      <li>Agrega esta página a tu pantalla de inicio (Compartir → Agregar a inicio) para abrirla rápido.</li>
+    </ul>
+  </details>
+</main>
+
+<script src="opus-decoder.min.js" charset="UTF-8"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const boton = $('boton'), punto = $('punto'), estadoTx = $('estado'), retrasoTx = $('retraso');
+  const leer = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } };
+  const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+
+  $('vol').value = leer('vol', 100);
+  $('lat').value = leer('lat', 90);
+  $('auto').checked = leer('auto', '1') === '1';
+  $('fondo').checked = leer('fondo', '1') === '1';
+  $('mute').checked = leer('mute', '1') === '1';
+
+  let ctx = null, ganancia = null, destinoStream = null, elAudio = null;
+  let ws = null, activo = false, rate = 48000, canales = 2;
+  let siguiente = 0, reintento = null, ultimoDato = 0;
+  let formato = 'pcm', decodificador = null;
+
+  // ---- Retraso automático (búfer adaptativo) ----
+  // Mide qué tanto varía la llegada de los paquetes en los últimos segundos y
+  // guarda solo el colchón necesario: poco en una red buena, más si la red va a tirones.
+  const MIN_AUTO = 0.03, MAX_AUTO = 0.5;
+  let metaAuto = 0.08, llegadas = [], relojMedia = 0, inicioRafaga = 0;
+
+  function medirLlegada(duracion) {
+    const t = performance.now() / 1000;
+    if (t - ultimoDato / 1000 > 1) { relojMedia = 0; inicioRafaga = t; llegadas = []; } // la laptop estuvo en silencio
+    // cuánto se atrasó este paquete respecto a lo que "debería" haber llegado
+    llegadas.push([t, t - inicioRafaga - relojMedia]);
+    relojMedia += duracion;
+    while (llegadas.length && t - llegadas[0][0] > 8) llegadas.shift();
+    let min = Infinity, max = -Infinity;
+    for (const [, d] of llegadas) { if (d < min) min = d; if (d > max) max = d; }
+    const necesario = Math.min(MAX_AUTO, Math.max(MIN_AUTO, (max - min) + 0.015));
+    // sube de inmediato si hace falta, baja poco a poco cuando la red mejora
+    metaAuto = necesario > metaAuto ? necesario : Math.max(necesario, metaAuto - duracion * 0.05);
+  }
+
+  function estado(texto, tipo) {
+    estadoTx.textContent = texto;
+    punto.className = 'punto ' + (tipo || '');
+  }
+
+  function objetivo() { return $('auto').checked ? metaAuto : Number($('lat').value) / 1000; }
+
+  function prepararAudio() {
+    // En iPhone: que suene aunque el interruptor de silencio esté activado
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      ctx = new AC({ latencyHint: 'interactive' });
+      ganancia = ctx.createGain();
+      ganancia.gain.value = Number($('vol').value) / 100;
+      ctx.onstatechange = () => {
+        if (activo && ctx.state !== 'running') estado('En pausa: toca el botón para reanudar', 'warn');
+      };
+    }
+    conectarSalida();
+    ctx.resume();
+  }
+
+  function conectarSalida() {
+    ganancia.disconnect();
+    if ($('fondo').checked && ctx.createMediaStreamDestination) {
+      // Pasar el audio por un elemento <audio> ayuda a que iOS lo deje sonar en segundo plano
+      if (!destinoStream) destinoStream = ctx.createMediaStreamDestination();
+      if (!elAudio) { elAudio = new Audio(); elAudio.setAttribute('playsinline', ''); }
+      ganancia.connect(destinoStream);
+      elAudio.srcObject = destinoStream.stream;
+      elAudio.play().catch(() => {});
+    } else {
+      if (elAudio) { elAudio.pause(); elAudio.srcObject = null; }
+      ganancia.connect(ctx.destination);
+    }
+    if ('mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: 'Audio de la laptop', artist: 'Puente de Audio' });
+        // Los botones de la pantalla bloqueada y de los AirPods controlan la laptop
+        const mapa = { play: 'playpause', pause: 'playpause', nexttrack: 'siguiente',
+                       previoustrack: 'anterior', seekforward: 'adelantar', seekbackward: 'atrasar' };
+        for (const [evento, accion] of Object.entries(mapa)) {
+          try { navigator.mediaSession.setActionHandler(evento, () => control(accion)); } catch {}
+        }
+      } catch {}
+    }
+  }
+
+  function conectar() {
+    clearTimeout(reintento);
+    estado('Conectando…', 'warn');
+    // Audio comprimido (Opus) si el decodificador cargó; si no, sin comprimir
+    const Opus = window['opus-decoder'] && window['opus-decoder'].OpusDecoder;
+    formato = (Opus && window.WebAssembly) ? 'opus' : 'pcm';
+    ws = new WebSocket(`ws://${location.host}/ws?formato=${formato}`);
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = () => {
+      estado('Conectado · esperando audio', 'ok');
+      ws.send(JSON.stringify({ tipo: 'silenciar', valor: $('mute').checked }));
+    };
+    ws.onmessage = ev => {
+      if (typeof ev.data === 'string') {
+        const m = JSON.parse(ev.data);
+        if (m.tipo === 'control') {
+          const nombres = { playpause: '⏯ Reproducir/pausa', siguiente: '⏭ Siguiente', anterior: '⏮ Anterior',
+                            adelantar: '⏩ +10 s', atrasar: '⏪ −10 s' };
+          $('ctrlTx').textContent = (nombres[m.accion] || m.accion) + (m.app ? ` en ${m.app}` : '');
+        }
+        if (m.tipo === 'hola') {
+          rate = m.rate; canales = m.canales;
+          if (formato === 'opus') {
+            if (decodificador) decodificador.free();
+            decodificador = null;
+            const d = new window['opus-decoder'].OpusDecoder({ channels: canales, sampleRate: 48000 });
+            d.ready.then(() => { decodificador = d; });
+          }
+        }
+        return;
+      }
+      if (formato === 'opus') {
+        if (!decodificador) return;
+        const r = decodificador.decodeFrame(new Uint8Array(ev.data));
+        if (r.samplesDecoded) reproducirCanales(r.channelData, r.samplesDecoded, 48000);
+      } else {
+        reproducir(ev.data);
+      }
+    };
+    ws.onclose = () => {
+      ws = null;
+      if (!activo) return;
+      estado('Sin conexión con la laptop · reintentando…', 'bad');
+      reintento = setTimeout(conectar, 1500);
+    };
+    ws.onerror = () => { try { ws.close(); } catch {} };
+  }
+
+  function reproducir(buf) {
+    const pcm = new Int16Array(buf);
+    const frames = pcm.length / canales;
+    if (!frames) return;
+    const datos = [];
+    for (let c = 0; c < canales; c++) {
+      const ch = new Float32Array(frames);
+      for (let i = 0, j = c; i < frames; i++, j += canales) ch[i] = pcm[j] / 32768;
+      datos.push(ch);
+    }
+    reproducirCanales(datos, frames, rate);
+  }
+
+  function reproducirCanales(datos, frames, sr) {
+    if (!ctx || ctx.state !== 'running') return;
+    const duracion = frames / sr;
+    const huboHueco = performance.now() - ultimoDato < 500; // ¿se trabó a media canción?
+    medirLlegada(duracion);
+    ultimoDato = performance.now();
+
+    const ahora = ctx.currentTime, meta = objetivo();
+    let adelanto = siguiente - ahora;
+    if (adelanto < 0.003) {
+      // Se acabó el colchón: si fue un tirón de la red, damos un poco más de margen
+      if (huboHueco && siguiente) metaAuto = Math.min(MAX_AUTO, metaAuto + 0.02);
+      siguiente = ahora + objetivo();
+      adelanto = siguiente - ahora;
+    }
+    const error = adelanto - meta;
+    if (error > 0.2) return; // demasiado audio acumulado: saltamos este pedacito para alcanzar
+    // Pequeño ajuste de velocidad (imperceptible) para mantener el retraso justo,
+    // en lugar de cortar el audio
+    let velocidad = 1;
+    if (error > 0.012) velocidad = 1 + Math.min(0.025, error * 0.12);
+    else if (error < -0.012) velocidad = 1 - Math.min(0.02, -error * 0.12);
+
+    const ab = ctx.createBuffer(datos.length, frames, sr);
+    for (let c = 0; c < datos.length; c++) ab.copyToChannel(datos[c], c);
+    const src = ctx.createBufferSource();
+    src.buffer = ab;
+    src.playbackRate.value = velocidad;
+    src.connect(ganancia);
+    src.start(siguiente);
+    siguiente += duracion / velocidad;
+  }
+
+  setInterval(() => {
+    if (!activo || !ctx) { retrasoTx.textContent = ''; return; }
+    if (ws && ws.readyState === 1 && ctx.state === 'running') {
+      const callado = performance.now() - ultimoDato > 800;
+      estado(callado ? 'Conectado · la laptop está en silencio' : 'Escuchando la laptop', 'ok');
+      retrasoTx.textContent = callado ? '' : `~${Math.round(Math.max(0, siguiente - ctx.currentTime) * 1000 + (ctx.outputLatency || ctx.baseLatency || 0) * 1000)} ms`;
+    }
+    if ($('auto').checked) { $('lat').value = Math.round(metaAuto * 1000); $('latTx').textContent = `(auto: ${Math.round(metaAuto * 1000)} ms)`; }
+  }, 500);
+  (function actualizarModo() {
+    $('lat').disabled = $('auto').checked;
+    if (!$('auto').checked) $('latTx').textContent = `(${$('lat').value} ms)`;
+  })();
+  $('auto').onchange = e => {
+    guardar('auto', e.target.checked ? '1' : '0');
+    $('lat').disabled = e.target.checked;
+    if (!e.target.checked) { $('lat').value = Math.round(metaAuto * 1000); guardar('lat', $('lat').value); $('latTx').textContent = `(${$('lat').value} ms)`; }
+  };
+
+  function iniciar() {
+    activo = true;
+    prepararAudio();
+    if (!ws) conectar();
+    boton.classList.add('on');
+    boton.innerHTML = 'Escuchando<small>Toca para detener</small>';
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+  }
+
+  function detener() {
+    activo = false;
+    clearTimeout(reintento);
+    if (ws) { ws.onclose = null; ws.close(); ws = null; }
+    if (elAudio) elAudio.pause();
+    if (ctx) ctx.suspend();
+    siguiente = 0;
+    boton.classList.remove('on');
+    boton.innerHTML = 'Escuchar<small>Toca para empezar</small>';
+    estado('Desconectado', '');
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+  }
+
+  boton.addEventListener('click', () => {
+    // Si está activo pero iOS lo pausó (otra app tomó el audio), el toque reanuda
+    if (activo && ctx && ctx.state !== 'running') { prepararAudio(); return; }
+    activo ? detener() : iniciar();
+  });
+
+  function control(accion) {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ tipo: 'control', accion }));
+    else estado('Toca “Escuchar” primero para controlar la laptop', 'warn');
+    if (navigator.vibrate) navigator.vibrate(15);
+  }
+  document.querySelectorAll('[data-accion]').forEach(b => b.addEventListener('click', () => control(b.dataset.accion)));
+
+  function ponerVolumen(v) {
+    v = Math.max(0, Math.min(150, Math.round(v)));
+    $('vol').value = v; $('volTx').textContent = v + '%';
+    guardar('vol', v);
+    if (ganancia) ganancia.gain.value = v / 100;
+  }
+  ponerVolumen(Number($('vol').value));
+  $('volMenos').onclick = () => ponerVolumen(Number($('vol').value) - 10);
+  $('volMas').onclick = () => ponerVolumen(Number($('vol').value) + 10);
+  $('vol').oninput = e => ponerVolumen(Number(e.target.value));
+  $('lat').oninput = e => { guardar('lat', e.target.value); siguiente = 0; };
+  $('fondo').onchange = e => { guardar('fondo', e.target.checked ? '1' : '0'); if (ctx) conectarSalida(); };
+  $('mute').onchange = e => {
+    guardar('mute', e.target.checked ? '1' : '0');
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ tipo: 'silenciar', valor: e.target.checked }));
+  };
+
+  // Si abriste la página con la dirección numérica (QR), revisa si la dirección fija
+  // puente-audio.local funciona en este iPhone y ofrece guardarla.
+  (async () => {
+    if (location.hostname.endsWith('.local')) return;
+    const fija = `http://puente-audio.local:${location.port || 80}`;
+    const aviso = $('aviso');
+    try {
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 3000);
+      const r = await fetch(fija + '/info', { cache: 'no-store', signal: ctrl.signal });
+      if (!r.ok) throw 0;
+      $('avisoLink').href = fija + '/escuchar';
+      aviso.hidden = false;
+    } catch {
+      $('avisoTx').textContent = 'Tu iPhone no encontró la dirección fija en esta red. Guarda esta página en tu pantalla de inicio; si cambias de red, vuelve a escanear el QR de la laptop.';
+      $('avisoLink').hidden = true;
+      aviso.hidden = false;
+    }
+  })();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && activo && ctx) {
+      ctx.resume();
+      if (elAudio && $('fondo').checked) elAudio.play().catch(() => {});
+      if (!ws) conectar();
+    }
+  });
+})();
+</script>
+</body>
+</html>
